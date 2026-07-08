@@ -1,0 +1,15 @@
+{
+  "name": "takt-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:bff": "pnpm --filter bff dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  }
+}
