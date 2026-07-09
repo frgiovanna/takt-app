@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "dev": "pnpm --parallel --filter bff --filter frontend dev",
     "dev:frontend": "pnpm --filter frontend dev",
     "dev:bff": "pnpm --filter bff dev",
     "build": "pnpm -r build",

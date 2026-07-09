@@ -1,556 +1,428 @@
-import React, { useState } from 'react';
-import { Card, Button, Input, ProductivityLevel, ProductivityBadge } from '@takt/design-system';
-import { Calendar, Plus, Clock, FileText, Trash2, X, AlertCircle } from 'lucide-react';
-import { api, Category, Activity } from '../services/api';
+import React, { useEffect, useRef, useState } from "react";
+import { Card, ProductivityBadge } from "@takt/design-system";
+import { api, Category, Activity } from "../services/api";
+import { ActivityFormModal, ActivityFormValues } from "./ActivityFormModal";
+import { toLocalDateStr, formatHourString, minutesOfDay } from "../utils/dates";
+
+const DAY_START = 0;
+const DAY_END = 24 * 60;
+const PX_PER_MIN = 1.1;
+const VISIBLE_HOURS = 9;
+const DEFAULT_START_HOUR = 8;
 
 interface CalendarViewProps {
   categories: Category[];
   activities: Activity[];
   onActivityLogged: (activity: Activity) => void;
+  onActivityUpdated?: (activity: Activity) => void;
   onActivityDeleted: (id: string) => void;
+  dateStr: string;
+  retroCategoryId: string;
+  openRetroRequest: number;
+  activeSession?: {
+    categoryName: string;
+    categoryColor: string;
+    startTime: Date;
+  } | null;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   categories,
   activities,
   onActivityLogged,
+  onActivityUpdated,
   onActivityDeleted,
+  dateStr,
+  retroCategoryId,
+  openRetroRequest,
+  activeSession,
 }) => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [title, setTitle] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [dateStr, setDateStr] = useState(new Date().toISOString().split('T')[0]);
-  const [startHour, setStartHour] = useState('09:00');
-  const [endHour, setEndHour] = useState('10:00');
-  const [prodLevel, setProdLevel] = useState<ProductivityLevel>(3);
-  const [note, setNote] = useState('');
-  const [error, setError] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [initialValues, setInitialValues] = useState<ActivityFormValues | null>(
+    null,
+  );
+  const [now, setNow] = useState(new Date());
+  const [timelineHeight, setTimelineHeight] = useState(0);
+  const [visibleStartMins, setVisibleStartMins] = useState(
+    DEFAULT_START_HOUR * 60,
+  );
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const visibleWindowMins = VISIBLE_HOURS * 60;
+  const visibleEndMins = visibleStartMins + visibleWindowMins;
+  const pxPerMin =
+    timelineHeight > 0 ? timelineHeight / visibleWindowMins : PX_PER_MIN;
 
-  // Daily hours range for the calendar grid visualization
-  const hours = Array.from({ length: 15 }, (_, i) => i + 8); // 08:00 to 22:00
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
 
-  const handleOpenAddModal = (hour?: number) => {
-    if (categories.length === 0) {
-      alert('Por favor, crie pelo menos uma categoria primeiro.');
-      return;
-    }
-    setSelectedCategoryId(categories[0].id);
-    if (hour !== undefined) {
-      const pad = (h: number) => h.toString().padStart(2, '0');
-      setStartHour(`${pad(hour)}:00`);
-      setEndHour(`${pad(hour + 1)}:00`);
-    }
-    setTitle('');
-    setNote('');
-    setProdLevel(3);
-    setError('');
-    setShowAddModal(true);
-  };
+  useEffect(() => {
+    const el = timelineScrollRef.current;
+    if (!el) return;
 
-  const handleCreateActivity = async () => {
-    if (!title.trim()) {
-      setError('O título da atividade é obrigatório.');
-      return;
-    }
+    const updateHeight = () => {
+      setTimelineHeight(el.clientHeight);
+    };
 
-    if (note.length > 500) {
-      setError('A justificativa deve ter no máximo 500 caracteres.');
-      return;
-    }
+    updateHeight();
 
-    const startDateTime = new Date(`${dateStr}T${startHour}`);
-    const endDateTime = new Date(`${dateStr}T${endHour}`);
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(el);
 
-    if (endDateTime <= startDateTime) {
-      setError('A hora de término deve ser após a hora de início.');
-      return;
-    }
+    return () => observer.disconnect();
+  }, []);
 
-    const selectedCategory = categories.find(c => c.id === selectedCategoryId) || categories[0];
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const minsToTime = (mins: number) =>
+    `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
 
-    try {
-      const newActivity = await api.createActivity({
-        title: title.trim(),
-        categoryId: selectedCategory.id,
-        categoryName: selectedCategory.name,
-        categoryColor: selectedCategory.color,
-        startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString(),
-        productivityLevel: prodLevel,
-        note: note.trim() || undefined,
-      });
-
-      onActivityLogged(newActivity);
-      setShowAddModal(false);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao criar atividade.');
-    }
-  };
-
-  const getActivitiesForHour = (hour: number) => {
-    return activities.filter((act) => {
-      const start = new Date(act.startTime);
-      const startH = start.getHours();
-      const actDateStr = start.toISOString().split('T')[0];
-      return actDateStr === dateStr && startH === hour;
+  const openCreateModal = (startMins?: number, forcedCategoryId?: string) => {
+    if (categories.length === 0) return;
+    const start = startMins ?? 9 * 60;
+    setEditingActivity(null);
+    setInitialValues({
+      categoryId:
+        categories.find((c) => c.id === forcedCategoryId)?.id ||
+        categories[0].id,
+      startTime: minsToTime(start),
+      endTime: minsToTime(Math.min(start + 60, DAY_END)),
+      productivityLevel: 3,
+      note: "",
     });
+    setModalOpen(true);
   };
 
-  const formatHourString = (isoString: string) => {
-    const d = new Date(isoString);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const openEditModal = (act: Activity) => {
+    setEditingActivity(act);
+    setInitialValues({
+      categoryId: act.categoryId,
+      startTime: formatHourString(act.startTime),
+      endTime: formatHourString(act.endTime),
+      productivityLevel: act.productivityLevel,
+      note: act.note || "",
+    });
+    setModalOpen(true);
   };
+
+  useEffect(() => {
+    if (openRetroRequest > 0) openCreateModal(undefined, retroCategoryId);
+  }, [openRetroRequest, retroCategoryId]);
+
+  useEffect(() => {
+    const isToday = toLocalDateStr(now) === dateStr;
+    const currentHour = isToday ? now.getHours() : DEFAULT_START_HOUR;
+    const halfWindow = Math.floor(VISIBLE_HOURS / 2);
+    const maxStartHour = 24 - VISIBLE_HOURS;
+    const startHour = Math.max(
+      0,
+      Math.min(currentHour - halfWindow, maxStartHour),
+    );
+    setVisibleStartMins(startHour * 60);
+  }, [dateStr, now]);
+
+  const handleSubmit = async (values: ActivityFormValues) => {
+    const category =
+      categories.find((c) => c.id === values.categoryId) || categories[0];
+    const payload = {
+      title: `Bloco: ${category.name}`,
+      categoryId: category.id,
+      categoryName: category.name,
+      categoryColor: category.color,
+      startTime: new Date(`${dateStr}T${values.startTime}`).toISOString(),
+      endTime: new Date(`${dateStr}T${values.endTime}`).toISOString(),
+      productivityLevel: values.productivityLevel,
+      note: values.note.trim() || undefined,
+    };
+
+    if (editingActivity) {
+      const updated = await api.updateActivity(editingActivity.id, payload);
+      onActivityUpdated?.(updated);
+    } else {
+      const created = await api.createActivity(payload);
+      onActivityLogged(created);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!editingActivity) return;
+    if (
+      window.confirm(
+        "Excluir este lançamento? Essa ação não pode ser desfeita.",
+      )
+    ) {
+      onActivityDeleted(editingActivity.id);
+      setModalOpen(false);
+    }
+  };
+
+  const dayActivities = activities.filter(
+    (act) => toLocalDateStr(new Date(act.startTime)) === dateStr,
+  );
+
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("[data-activity-block]")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mins = visibleStartMins + (e.clientY - rect.top) / pxPerMin;
+    const snapped = Math.floor(mins / 30) * 30;
+    openCreateModal(Math.max(DAY_START, Math.min(snapped, DAY_END - 30)));
+  };
+
+  const blockPosition = (startISO: string, endISO: string) => {
+    const start = Math.max(minutesOfDay(startISO), visibleStartMins);
+    const end = Math.min(minutesOfDay(endISO), visibleEndMins);
+    if (end <= start) return null;
+
+    return {
+      top: (start - visibleStartMins) * pxPerMin,
+      height: Math.max((end - start) * pxPerMin, 10),
+    };
+  };
+
+  const isToday = toLocalDateStr(now) === dateStr;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const showNowLine =
+    isToday && nowMins >= visibleStartMins && nowMins <= visibleEndMins;
+
+  const hours = Array.from(
+    { length: VISIBLE_HOURS },
+    (_, i) => Math.floor(visibleStartMins / 60) + i,
+  );
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '24px' }}>
-        {/* Calendar Navigation & Log Input Trigger */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Card>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={20} style={{ color: 'var(--color-primary)' }} />
-              Calendário de Lançamentos
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label htmlFor="calendar-date-input" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                  Selecionar Dia
-                </label>
-                <input
-                  id="calendar-date-input"
-                  type="date"
-                  value={dateStr}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  style={{
-                    fontFamily: 'var(--font-family)',
-                    fontSize: '15px',
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--border-radius-md)',
-                    color: 'var(--text-primary)',
-                    padding: '12px 16px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <Button id="btn-open-log-modal" onClick={() => handleOpenAddModal()} variant="primary" style={{ width: '100%' }}>
-                <Plus size={16} /> Lançar Bloco Manual
-              </Button>
-            </div>
-          </Card>
-
-          {/* List of registered activities */}
-          <Card style={{ flex: 1 }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, margin: '0 0 12px 0' }}>Lançados Hoje ({dateStr})</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scroll">
-              {activities.filter(a => a.startTime.startsWith(dateStr)).length === 0 ? (
-                <p style={{ fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '20px' }}>
-                  Nenhuma atividade registrada para este dia.
-                </p>
-              ) : (
-                activities
-                  .filter(a => a.startTime.startsWith(dateStr))
-                  .map((act) => (
-                    <div
-                      key={act.id}
-                      style={{
-                        padding: '12px',
-                        borderRadius: 'var(--border-radius-md)',
-                        border: '1px solid var(--border-color)',
-                        background: 'rgba(255,255,255,0.02)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        position: 'relative'
-                      }}
-                    >
-                      <button
-                        onClick={() => onActivityDeleted(act.id)}
-                        style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--color-nada)',
-                          cursor: 'pointer',
-                          opacity: 0.7,
-                        }}
-                        title="Deletar atividade"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: act.categoryColor }} />
-                        <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {act.title}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={12} /> {formatHourString(act.startTime)} - {formatHourString(act.endTime)}
-                        </span>
-                        <span>
-                          {act.categoryName}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                        <ProductivityBadge level={act.productivityLevel} />
-                        {act.note && (
-                          <div style={{ display: 'flex', alignItems: 'start', gap: '4px', background: 'rgba(0,0,0,0.15)', padding: '6px 8px', borderRadius: 'var(--border-radius-sm)', width: '100%', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <FileText size={12} style={{ marginTop: '2px', flexShrink: 0 }} />
-                            <span style={{ wordBreak: 'break-word' }}>{act.note}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </Card>
+      <Card
+        style={{
+          padding: "16px",
+          background: "var(--surface-elevated)",
+          height: "100%",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, margin: 0 }}>
+              Linha do tempo do dia
+            </h3>
+          </div>
         </div>
 
-        {/* Interactive Calendar Scheduler Grid */}
-        <Card style={{ padding: '20px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>Visualização de Grade Diária</h3>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{dateStr}</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', overflow: 'hidden' }}>
-            {hours.map((hour) => {
-              const hourActivities = getActivitiesForHour(hour);
-              const label = `${hour.toString().padStart(2, '0')}:00`;
-              
-              return (
-                <div
-                  key={hour}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '80px 1fr',
-                    minHeight: '60px',
-                    borderBottom: '1px solid var(--border-color)',
-                    background: 'rgba(255,255,255,0.01)',
-                  }}
-                >
-                  <div style={{
-                    padding: '12px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    color: 'var(--text-secondary)',
-                    borderRight: '1px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.15)'
-                  }}>
-                    {label}
-                  </div>
-
-                  <div
-                    onClick={() => {
-                      if (hourActivities.length === 0) handleOpenAddModal(hour);
-                    }}
-                    style={{
-                      padding: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      cursor: hourActivities.length === 0 ? 'pointer' : 'default',
-                      position: 'relative',
-                    }}
-                    className={hourActivities.length === 0 ? 'grid-slot-empty' : ''}
-                  >
-                    <style>{`
-                      .grid-slot-empty:hover {
-                        background: rgba(16, 185, 129, 0.05) !important;
-                      }
-                    `}</style>
-
-                    {hourActivities.length === 0 ? (
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'none', position: 'absolute', right: '12px', top: '18px' }} className="click-to-add">
-                        + Clique para lançar
-                      </span>
-                    ) : (
-                      hourActivities.map((act) => (
-                        <div
-                          key={act.id}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: 'var(--border-radius-sm)',
-                            borderLeft: `4px solid ${act.categoryColor}`,
-                            background: `${act.categoryColor}15`,
-                            color: 'var(--text-primary)',
-                            fontSize: '13px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontWeight: 600 }}>{act.title}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                              ({formatHourString(act.startTime)} - {formatHourString(act.endTime)})
-                            </span>
-                          </div>
-                          <ProductivityBadge level={act.productivityLevel} style={{ padding: '2px 6px', fontSize: '10px' }} />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-
-      {/* Retro Creator Modal */}
-      {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(5, 8, 16, 0.8)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--border-radius-lg)',
-            width: '100%',
-            maxWidth: '550px',
-            padding: '24px',
-            boxShadow: 'var(--box-shadow-card)',
-            position: 'relative'
-          }}>
-            <button
-              onClick={() => setShowAddModal(false)}
+        <div
+          ref={timelineScrollRef}
+          style={{
+            border: "1px solid var(--border-color)",
+            borderRadius: "12px",
+            overflow: "hidden",
+            flex: 1,
+            minHeight: 0,
+            overscrollBehavior: "contain",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "52px 1fr",
+              borderRadius: "12px",
+              overflow: "hidden",
+            }}
+          >
+            <div
               style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                borderRight: "1px solid var(--border-color)",
+                background: "var(--bg-input)",
               }}
             >
-              <X size={20} />
-            </button>
+              {hours.map((h) => (
+                <div
+                  key={h}
+                  style={{
+                    height: 60 * pxPerMin,
+                    fontSize: "11px",
+                    fontWeight: 500,
+                    color: "var(--text-muted)",
+                    display: "flex",
+                    justifyContent: "center",
+                    paddingTop: "4px",
+                  }}
+                >
+                  {pad(h)}:00
+                </div>
+              ))}
+            </div>
 
-            <h3 style={{ fontSize: '20px', fontWeight: 600, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
-              Lançar Bloco Retroativo
-            </h3>
+            <div
+              onClick={handleTimelineClick}
+              style={{
+                position: "relative",
+                height: "100%",
+                background: "var(--surface-soft)",
+                cursor: "copy",
+                backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent ${60 * pxPerMin - 1}px, var(--border-color) ${60 * pxPerMin - 1}px, var(--border-color) ${60 * pxPerMin}px)`,
+              }}
+            >
+              {dayActivities.map((act) => {
+                const pos = blockPosition(act.startTime, act.endTime);
+                if (!pos) return null;
 
-            {error && (
-              <div style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--color-nada)', borderRadius: 'var(--border-radius-md)', color: 'var(--color-nada)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <AlertCircle size={16} /> {error}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <Input
-                id="retro-activity-title"
-                label="Nome da Atividade"
-                placeholder="Ex: Refatoração de testes"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label htmlFor="retro-category-select" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Categoria
-                  </label>
-                  <select
-                    id="retro-category-select"
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                const { top, height } = pos;
+                const compact = height < 44;
+                return (
+                  <button
+                    key={act.id}
+                    data-activity-block
+                    onClick={() => openEditModal(act)}
+                    title={`${act.categoryName} · ${formatHourString(act.startTime)}-${formatHourString(act.endTime)}. Toque para editar.`}
                     style={{
-                      fontFamily: 'var(--font-family)',
-                      fontSize: '15px',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--border-radius-md)',
-                      color: 'var(--text-primary)',
-                      padding: '12px 16px',
-                      width: '100%',
-                      outline: 'none',
+                      position: "absolute",
+                      top,
+                      height,
+                      left: "6px",
+                      right: "6px",
+                      borderRadius: "var(--border-radius-sm)",
+                      border: "none",
+                      borderLeft: `3px solid ${act.categoryColor}`,
+                      background: `color-mix(in srgb, ${act.categoryColor} 14%, var(--surface-elevated))`,
+                      color: "var(--text-primary)",
+                      padding: compact ? "2px 8px" : "6px 10px",
+                      display: "flex",
+                      flexDirection: compact ? "row" : "column",
+                      alignItems: compact ? "center" : "flex-start",
+                      gap: compact ? "8px" : "2px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      fontFamily: "var(--font-family)",
                     }}
                   >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="retro-date" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Data
-                  </label>
-                  <input
-                    id="retro-date"
-                    type="date"
-                    value={dateStr}
-                    onChange={(e) => setDateStr(e.target.value)}
-                    style={{
-                      fontFamily: 'var(--font-family)',
-                      fontSize: '15px',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--border-radius-md)',
-                      color: 'var(--text-primary)',
-                      padding: '12px 16px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label htmlFor="retro-start-time" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Hora Início
-                  </label>
-                  <input
-                    id="retro-start-time"
-                    type="time"
-                    value={startHour}
-                    onChange={(e) => setStartHour(e.target.value)}
-                    style={{
-                      fontFamily: 'var(--font-family)',
-                      fontSize: '15px',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--border-radius-md)',
-                      color: 'var(--text-primary)',
-                      padding: '12px 16px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="retro-end-time" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                    Hora Fim
-                  </label>
-                  <input
-                    id="retro-end-time"
-                    type="time"
-                    value={endHour}
-                    onChange={(e) => setEndHour(e.target.value)}
-                    style={{
-                      fontFamily: 'var(--font-family)',
-                      fontSize: '15px',
-                      background: 'var(--bg-input)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--border-radius-md)',
-                      color: 'var(--text-primary)',
-                      padding: '12px 16px',
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '10px' }}>
-                  Produtividade
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  {([1, 2, 3, 4] as ProductivityLevel[]).map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => setProdLevel(level)}
+                    <span
                       style={{
-                        padding: '10px',
-                        borderRadius: 'var(--border-radius-md)',
-                        border: prodLevel === level ? '2px solid var(--border-color-active)' : '1px solid var(--border-color)',
-                        background: prodLevel === level ? 'rgba(255,255,255,0.05)' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
-                      <ProductivityBadge level={level} />
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      {act.categoryName}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--text-secondary)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {formatHourString(act.startTime)}-
+                      {formatHourString(act.endTime)}
+                    </span>
+                    {!compact && (
+                      <ProductivityBadge
+                        level={act.productivityLevel}
+                        style={{
+                          marginTop: "auto",
+                          fontSize: "10px",
+                          padding: "2px 6px",
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
 
-              <div>
-                <label htmlFor="retro-note" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                  Justificativa / Nota (Opcional - máx. 500 caracteres)
-                </label>
-                <textarea
-                  id="retro-note"
-                  placeholder="Motivos para seu rendimento..."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={3}
+              {activeSession &&
+                isToday &&
+                (() => {
+                  const { top, height } = blockPosition(
+                    activeSession.startTime.toISOString(),
+                    now.toISOString(),
+                  );
+                  return (
+                    <div
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        top,
+                        height,
+                        left: "6px",
+                        right: "6px",
+                        borderRadius: "var(--border-radius-sm)",
+                        border: `2px dashed ${activeSession.categoryColor}`,
+                        background: `color-mix(in srgb, ${activeSession.categoryColor} 8%, transparent)`,
+                        padding: "4px 10px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "var(--text-secondary)",
+                        pointerEvents: "none",
+                        animation: "pulseGlow 2.5s infinite",
+                      }}
+                    >
+                      {activeSession.categoryName} · em andamento
+                    </div>
+                  );
+                })()}
+
+              {showNowLine && (
+                <div
+                  aria-hidden
                   style={{
-                    fontFamily: 'var(--font-family)',
-                    fontSize: '14px',
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--border-radius-md)',
-                    color: 'var(--text-primary)',
-                    padding: '12px',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    resize: 'vertical'
+                    position: "absolute",
+                    top: (nowMins - visibleStartMins) * pxPerMin,
+                    left: 0,
+                    right: 0,
+                    height: "2px",
+                    background: "var(--color-primary)",
+                    pointerEvents: "none",
+                    zIndex: 2,
                   }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {note.length}/500 caracteres
-                  </span>
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: "-4px",
+                      top: "-3px",
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      background: "var(--color-primary)",
+                    }}
+                  />
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <Button onClick={() => setShowAddModal(false)} variant="secondary">
-                  Cancelar
-                </Button>
-                <Button id="btn-save-retro" onClick={handleCreateActivity} variant="primary">
-                  Salvar Lançamento
-                </Button>
-              </div>
+              )}
             </div>
           </div>
         </div>
+      </Card>
+
+      {initialValues && (
+        <ActivityFormModal
+          open={modalOpen}
+          title={editingActivity ? "Editar Lançamento" : "Lançar Bloco"}
+          categories={categories}
+          dateStr={dateStr}
+          initialValues={initialValues}
+          submitLabel={
+            editingActivity ? "Salvar Alterações" : "Salvar Lançamento"
+          }
+          onSubmit={handleSubmit}
+          onClose={() => setModalOpen(false)}
+          secondaryAction={
+            editingActivity
+              ? { label: "Excluir", onClick: handleDelete, variant: "danger" }
+              : undefined
+          }
+        />
       )}
     </>
   );
