@@ -344,10 +344,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               {activeSession &&
                 isToday &&
                 (() => {
-                  const { top, height } = blockPosition(
-                    activeSession.startTime.toISOString(),
-                    now.toISOString(),
-                  );
+                const pos = blockPosition(
+                  activeSession.startTime.toISOString(),
+                  now.toISOString(),
+                );
+                if (!pos) return null;
+
+                const { top, height } = pos;
                   return (
                     <div
                       aria-hidden

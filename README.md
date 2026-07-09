@@ -1,10 +1,17 @@
 # Takt - Time & Productivity Tracking Platform
 
-> **Takt is a time and productivity tracking platform that helps professionals and students understand how they're distributing their time throughout the day. Through customizable categories, activity logging in a calendar, and productivity assessments, users create a history of their routine and transform everyday data into insights to improve focus, organization, and performance.**
+> **Takt is a time and productivity tracking platform that helps professionals**
+> **and students understand how they are distributing their time throughout the**
+> **day. Through customizable categories, calendar activity logging, and**
+> **productivity assessments, users transform everyday data into insights to**
+> **improve focus, organization, and performance.**
 
 ## 🎯 Overview
 
-Takt empowers users to take control of their time by providing intuitive tools to track, categorize, and analyze their daily activities. Whether you're a professional juggling multiple projects or a student managing study sessions, Takt helps you:
+Takt empowers users to take control of their time with intuitive tools to
+track, categorize, and analyze daily activities. Whether you are a
+professional juggling multiple projects or a student managing study sessions,
+Takt helps you:
 
 - **Track time** in real-time or log activities manually
 - **Categorize activities** with predefined or custom categories
@@ -17,26 +24,31 @@ Takt empowers users to take control of their time by providing intuitive tools t
 ## 🛠️ Tech Stack
 
 ### **Frontend**
+
 - **React** 18.2 - Modern UI library
 - **Vite** 5.0 - Ultra-fast build tool and dev server
 - **TypeScript** 5.2 - Type-safe JavaScript
 - **Lucide React** - Beautiful, consistent icons
 
 ### **Backend**
+
 - **Express.js** 4.18 - Lightweight API framework
 - **Node.js** ≥18 - JavaScript runtime
 - **TypeScript** 5.2 - Type-safe backend
 
 ### **Shared**
+
 - **React Components Library** - Design system package with reusable UI components
 - **CSS Theme** - Centralized styling and theme management
 
 ### **Testing**
+
 - **Vitest** 1.2 - Fast unit test framework
 - **Testing Library** - React component testing utilities
 - **Supertest** 6.3 - HTTP assertion library
 
 ### **Package Management**
+
 - **pnpm** 9.15+ - Fast, disk-space efficient package manager
 - **Monorepo** - Workspace setup for scalable multi-package development
 
@@ -44,7 +56,7 @@ Takt empowers users to take control of their time by providing intuitive tools t
 
 ## 📁 Project Structure
 
-```
+```text
 takt-app/
 ├── packages/
 │   ├── bff/                      # Backend-for-Frontend API
@@ -103,17 +115,20 @@ takt-app/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd takt-app
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
 
 3. **Start development servers**
+
    ```bash
    # In one terminal - Backend API
    pnpm dev:bff
@@ -123,13 +138,14 @@ takt-app/
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3000
+   - Frontend: <http://localhost:5173>
+   - Backend API: <http://localhost:3000>
 
 ### Quick Test
 
 Log in with any email and a password with 4+ characters:
-- **Email**: any@email.com
+
+- **Email**: <any@email.com>
 - **Password**: anypassword123
 
 ---
@@ -139,7 +155,7 @@ Log in with any email and a password with 4+ characters:
 ### **Root Commands** (run from project root)
 
 | Command | Description |
-|---------|-------------|
+| --------- | ------------- |
 | `pnpm dev:frontend` | Start React dev server with hot reload |
 | `pnpm dev:bff` | Start Express API server with live reloading |
 | `pnpm build` | Build all packages (TypeScript + Vite bundling) |
@@ -164,18 +180,21 @@ pnpm --filter frontend test
 ## 🔌 API Reference
 
 ### **Base URL**
-```
+
+```text
 http://localhost:3000/api
 ```
 
 ### **Health Check**
-```
+
+```text
 GET /health
 ```
 
 ### **Authentication**
 
 #### Login
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -187,6 +206,7 @@ Content-Type: application/json
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "token": "jwt-token-here",
@@ -199,6 +219,7 @@ Content-Type: application/json
   }
 }
 ```
+
 ---
 
 ### **Key Design Patterns**
@@ -216,10 +237,10 @@ Content-Type: application/json
 ### **Test Suite Overview**
 
 | Package | Coverage | Files |
-|---------|----------|-------|
+| --------- | ---------- | ------- |
 | **bff** | API routes, handlers | `packages/bff/__tests__/routes.test.ts` |
 | **design-system** | React components | `packages/design-system/src/components/__tests__/components.test.tsx` |
-| **frontend** | Integration tests, UI flows | `packages/frontend/src/App.test.tsx` |
+| **frontend** | Integration tests and UI flows | `packages/frontend/src/App.test.tsx` |
 
 ### **Running Tests**
 
@@ -240,6 +261,7 @@ pnpm --filter design-system test
 ```
 
 ### **Test Tools**
+
 - **Vitest** - Ultra-fast test runner with instant feedback
 - **@testing-library/react** - User-centric component testing
 - **Supertest** - HTTP assertion and mocking for API tests
@@ -256,11 +278,13 @@ pnpm build
 ```
 
 This command:
+
 1. Compiles TypeScript with strict type checking
 2. Bundles frontend with Vite (optimized for production)
 3. Prepares all packages for deployment
 
 ### **Output Artifacts**
+
 - Frontend bundle: Optimized JavaScript, CSS, and assets ready for static hosting
 - Backend: TypeScript compiled to JavaScript (ready to run on Node.js)
 
@@ -271,27 +295,32 @@ This command:
 ### **Development Workflow**
 
 1. Create a feature branch
+
    ```bash
    git checkout -b feature/your-feature
    ```
 
 2. Make changes and ensure tests pass
+
    ```bash
    pnpm test
    ```
 
 3. Format and lint (if configured)
+
    ```bash
    pnpm build
    ```
 
 4. Commit and push
+
    ```bash
    git commit -m "feat: add your feature"
    git push origin feature/your-feature
    ```
 
 ### **Code Standards**
+
 - TypeScript strict mode enabled
 - ESM modules
 - React functional components with hooks
