@@ -30,10 +30,12 @@ async function apiFetch<T>(
 
 export interface User {
   id: string;
+  username?: string;
   name: string;
   email: string;
   role: string;
   level: string;
+  areaOfActuation?: string;
   weeklyTargetHours: number;
 }
 
@@ -58,48 +60,60 @@ export interface Activity {
 
 export type ActivityPayload = Omit<Activity, "id">;
 
+interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresInMs?: number;
+  user: User;
+}
+
+function persistSession(data: AuthSession) {
+  localStorage.setItem("takt_token", data.accessToken);
+  localStorage.setItem("takt_access_token", data.accessToken);
+  localStorage.setItem("takt_refresh_token", data.refreshToken);
+  localStorage.setItem("takt_user", JSON.stringify(data.user));
+}
+
 export const api = {
   // Auth
   login: async (
+    username: string,
+    password: string,
+  ): Promise<AuthSession> => {
+    const data = await apiFetch<AuthSession>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    persistSession(data);
+    return data;
+  },
+
+  register: async (
+    username: string,
     email: string,
     password: string,
-  ): Promise<{ token: string; user: User }> => {
-    try {
-      const data = await apiFetch<{ token: string; user: User }>(
-        "/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
-        },
-      );
-      localStorage.setItem("takt_token", data.token);
-      localStorage.setItem("takt_user", JSON.stringify(data.user));
-      return data;
-    } catch (err) {
-      console.warn("BFF Login failed, running in mock/offline mode:", err);
-      // Mock Fallback
-      if (password.length >= 4) {
-        const mockData = {
-          token: "mock-local-token-xyz-98765",
-          user: {
-            id: "usr-local",
-            name: "Giovanna Freitas (Offline)",
-            email: email,
-            role: "Product Lead",
-            level: "Senior",
-            weeklyTargetHours: 40,
-          },
-        };
-        localStorage.setItem("takt_token", mockData.token);
-        localStorage.setItem("takt_user", JSON.stringify(mockData.user));
-        return mockData;
-      }
-      throw err;
-    }
+  ): Promise<AuthSession> => {
+    const data = await apiFetch<AuthSession>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    });
+    persistSession(data);
+    return data;
   },
 
   logout: () => {
+    const refreshToken = localStorage.getItem("takt_refresh_token");
+    if (refreshToken) {
+      apiFetch<void>("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ refreshToken }),
+      }).catch((err) => {
+        console.warn("Failed to logout from BFF:", err);
+      });
+    }
     localStorage.removeItem("takt_token");
+    localStorage.removeItem("takt_access_token");
+    localStorage.removeItem("takt_refresh_token");
     localStorage.removeItem("takt_user");
   },
 

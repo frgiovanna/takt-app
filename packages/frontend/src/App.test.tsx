@@ -10,8 +10,8 @@ describe('App login screen', () => {
   test('renders the simple login form for unauthenticated users', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Takt App' })).toBeInTheDocument();
-    expect(screen.getByLabelText('E-mail profissional')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Takt' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Usuário')).toBeInTheDocument();
     expect(screen.getByLabelText('Senha de acesso')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Entrar no Takt' })).toBeInTheDocument();
   });

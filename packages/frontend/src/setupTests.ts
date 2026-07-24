@@ -11,3 +11,17 @@ Object.defineProperty(globalThis, 'localStorage', {
   },
   configurable: true,
 });
+
+Object.defineProperty(window, 'matchMedia', {
+  value: () => ({
+    matches: false,
+    media: '',
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+  configurable: true,
+});

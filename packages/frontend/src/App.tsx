@@ -20,6 +20,8 @@ import { toLocalDateStr } from "./utils/dates";
 import "@takt/design-system/theme.css";
 
 const DASHBOARD_SCALE = 1.1;
+const AUTH_CARD_MIN_HEIGHT = 560;
+type AuthFieldErrors = Partial<Record<"username" | "email" | "password", string>>;
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -48,9 +50,12 @@ export default function App() {
   const [activities, setActivities] = useState<Activity[]>([]);
 
   // Auth Inputs
-  const [email, setEmail] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [username, setUsername] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [authFieldErrors, setAuthFieldErrors] = useState<AuthFieldErrors>({});
 
   // Category Inputs
   const [newCatName, setNewCatName] = useState("");
@@ -125,21 +130,81 @@ export default function App() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const validateAuthForm = () => {
+    const cleanUsername = username.trim();
+    const cleanEmail = registerEmail.trim();
+    const nextErrors: AuthFieldErrors = {};
+
+    if (!cleanUsername) {
+      nextErrors.username = "Informe seu usuário.";
+    } else if (authMode === "register" && cleanUsername.length < 3) {
+      nextErrors.username = "Use pelo menos 3 caracteres.";
+    }
+
+    if (!password.trim()) {
+      nextErrors.password = "Informe sua senha.";
+    }
+
+    if (authMode === "register") {
+      if (!cleanEmail) {
+        nextErrors.email = "Informe seu e-mail.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+        nextErrors.email = "Digite um e-mail válido.";
+      }
+
+      if (!password.trim()) {
+        nextErrors.password = "Crie uma senha.";
+      } else if (password.length < 6) {
+        nextErrors.password = "Use pelo menos 6 caracteres.";
+      } else if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password)) {
+        nextErrors.password = "Inclua uma letra maiúscula, um número e um símbolo.";
+      }
+    }
+
+    setAuthFieldErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      setAuthError("Revise os campos destacados.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const clearAuthFieldError = (field: keyof AuthFieldErrors) => {
+    setAuthError("");
+    setAuthFieldErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
 
-    if (!email.trim() || !password.trim()) {
-      setAuthError("Email e senha são obrigatórios.");
+    if (!validateAuthForm()) {
       return;
     }
 
+    const cleanUsername = username.trim();
+    const cleanEmail = registerEmail.trim();
+
     try {
-      const data = await api.login(email.trim(), password.trim());
+      const data =
+        authMode === "register"
+          ? await api.register(cleanUsername, cleanEmail, password.trim())
+          : await api.login(cleanUsername, password.trim());
       setUser(data.user);
       loadDashboardData();
     } catch (err: any) {
-      setAuthError(err.message || "Falha na autenticação. Verifique os dados.");
+      setAuthError(
+        err.message ||
+          (authMode === "register"
+            ? "Falha ao cadastrar. Verifique os dados."
+            : "Falha na autenticação. Verifique os dados."),
+      );
     }
   };
 
@@ -148,7 +213,8 @@ export default function App() {
     setUser(null);
     setCategories([]);
     setActivities([]);
-    setEmail("");
+    setUsername("");
+    setRegisterEmail("");
     setPassword("");
   };
 
@@ -286,10 +352,19 @@ export default function App() {
             gap: "36px",
             position: "relative",
             zIndex: 1,
-            alignItems: "stretch",
+            alignItems: "center",
           }}
         >
-          <div style={{ padding: "14px 8px" }}>
+          <div
+            className="login-static-panel"
+            style={{
+              padding: "14px 8px",
+              minHeight: `${AUTH_CARD_MIN_HEIGHT}px`,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
             <span
               style={{
                 display: "inline-flex",
@@ -365,22 +440,10 @@ export default function App() {
                 Avalie produtividade e melhore suas decisoes da semana
               </div>
             </div>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "10px",
-                fontSize: "12px",
-                color: "var(--text-secondary)",
-                textTransform: "capitalize",
-              }}
-            >
-              <Clock size={14} />
-              {todayLabel}
-            </div>
           </div>
 
           <div
+            className="auth-card"
             style={{
               background:
                 theme === "dark"
@@ -389,10 +452,15 @@ export default function App() {
               border: "none",
               borderRadius: "26px 12px 22px 14px",
               padding: "34px 30px",
+              minHeight: `${AUTH_CARD_MIN_HEIGHT}px`,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
               backdropFilter: "var(--backdrop-blur)",
               WebkitBackdropFilter: "var(--backdrop-blur)",
               boxShadow:
                 "0 18px 36px color-mix(in srgb, var(--color-primary) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent)",
+              transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
             }}
           >
             <div style={{ marginBottom: "22px" }}>
@@ -404,7 +472,7 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                Entrar
+                {authMode === "register" ? "Criar conta" : "Entrar"}
               </h2>
               <p
                 style={{
@@ -413,8 +481,9 @@ export default function App() {
                   color: "var(--text-secondary)",
                 }}
               >
-                Seu historico de tempo, categorias e produtividade em um so
-                lugar
+                {authMode === "register"
+                  ? "Crie seu acesso inicial para salvar categorias e blocos de tempo"
+                  : "Seu historico de tempo, categorias e produtividade em um so lugar"}
               </p>
             </div>
 
@@ -439,18 +508,40 @@ export default function App() {
             )}
 
             <form
-              onSubmit={handleLogin}
+              onSubmit={handleAuthSubmit}
+              noValidate
               style={{ display: "flex", flexDirection: "column", gap: "20px" }}
             >
               <Input
-                id="login-email-input"
-                label="E-mail profissional"
-                placeholder="seu-email@empresa.com"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                id="login-username-input"
+                label="Usuário"
+                placeholder="seu_usuario"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  clearAuthFieldError("username");
+                }}
+                error={authFieldErrors.username}
+                aria-invalid={Boolean(authFieldErrors.username)}
+                autoComplete="username"
               />
+
+              {authMode === "register" && (
+                <Input
+                  id="register-email-input"
+                  label="E-mail"
+                  placeholder="seu-email@empresa.com"
+                  type="email"
+                  value={registerEmail}
+                  onChange={(e) => {
+                    setRegisterEmail(e.target.value);
+                    clearAuthFieldError("email");
+                  }}
+                  error={authFieldErrors.email}
+                  aria-invalid={Boolean(authFieldErrors.email)}
+                  autoComplete="email"
+                />
+              )}
 
               <Input
                 id="login-password-input"
@@ -458,8 +549,15 @@ export default function App() {
                 placeholder="Digite sua senha"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearAuthFieldError("password");
+                }}
+                error={authFieldErrors.password}
+                aria-invalid={Boolean(authFieldErrors.password)}
+                autoComplete={
+                  authMode === "register" ? "new-password" : "current-password"
+                }
               />
 
               <div
@@ -485,22 +583,24 @@ export default function App() {
                   />{" "}
                   Lembrar de mim
                 </label>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert(
-                      "Recuperação via e-mail em desenvolvimento. Por favor faça login direto.",
-                    );
-                  }}
-                  style={{
-                    color: "var(--color-primary)",
-                    textDecoration: "none",
-                    fontWeight: 500,
-                  }}
-                >
-                  Esqueceu a senha?
-                </a>
+                {authMode === "login" && (
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      alert(
+                        "Recuperação via e-mail em desenvolvimento. Vamos integrar esse fluxo depois do MVP de login/cadastro.",
+                      );
+                    }}
+                    style={{
+                      color: "var(--color-primary)",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Esqueceu a senha?
+                  </a>
+                )}
               </div>
 
               <Button
@@ -509,7 +609,7 @@ export default function App() {
                 variant="primary"
                 style={{ width: "100%", marginTop: "8px" }}
               >
-                Entrar no Takt
+                {authMode === "register" ? "Criar conta no Takt" : "Entrar no Takt"}
               </Button>
             </form>
 
@@ -521,13 +621,17 @@ export default function App() {
                 color: "var(--text-secondary)",
               }}
             >
-              Não tem uma conta?{" "}
+              {authMode === "register"
+                ? "Já tem uma conta?"
+                : "Não tem uma conta?"}{" "}
               <a
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert(
-                    "Fluxo de cadastro de conta está ativo pelo formulário de Login. Qualquer credencial válida com senha de 4 dígitos ou mais será criada offline automaticamente!",
+                  setAuthError("");
+                  setAuthFieldErrors({});
+                  setAuthMode((mode) =>
+                    mode === "login" ? "register" : "login",
                   );
                 }}
                 style={{
@@ -536,7 +640,7 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                Cadastre-se
+                {authMode === "register" ? "Entrar" : "Cadastre-se"}
               </a>
             </div>
           </div>
@@ -546,6 +650,13 @@ export default function App() {
             .login-shell {
               grid-template-columns: 1fr !important;
               gap: 20px !important;
+            }
+            .login-static-panel {
+              min-height: auto !important;
+              justify-content: flex-start !important;
+            }
+            .auth-card {
+              min-height: auto !important;
             }
           }
         `}</style>
