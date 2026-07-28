@@ -748,34 +748,36 @@ export default function App() {
               <img
                 src="/assets/branding/takt-logo.png"
                 alt="Takt App Logo"
-                style={{ width: "34px", height: "34px" }}
+                style={{ width: "48px", height: "48px" }}
               />
-              <h1
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  margin: 0,
-                  letterSpacing: "-0.3px",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                Takt
-              </h1>
-              <p
-                style={{
-                  margin: "2px 0 0 0",
-                  fontSize: "12px",
-                  color: "var(--text-muted)",
-                  letterSpacing: "0.2px",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                Menos correria, mais clareza no seu dia
-              </p>
+              <div>
+                <h1
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    margin: 0,
+                    letterSpacing: "-0.3px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  Takt
+                </h1>
+                <p
+                  style={{
+                    margin: "2px 0 0 0",
+                    fontSize: "12px",
+                    color: "var(--text-muted)",
+                    letterSpacing: "0.2px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  Menos correria, mais clareza no seu dia
+                </p>
+              </div>
             </div>
           </div>
 
