@@ -21,7 +21,9 @@ import "@takt/design-system/theme.css";
 
 const DASHBOARD_SCALE = 1.1;
 const AUTH_CARD_MIN_HEIGHT = 560;
-type AuthFieldErrors = Partial<Record<"username" | "email" | "password", string>>;
+type AuthFieldErrors = Partial<
+  Record<"username" | "email" | "password", string>
+>;
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -151,8 +153,11 @@ export default function App() {
         nextErrors.password = "Crie uma senha.";
       } else if (password.length < 6) {
         nextErrors.password = "Use pelo menos 6 caracteres.";
-      } else if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password)) {
-        nextErrors.password = "Inclua uma letra maiúscula, um número e um símbolo.";
+      } else if (
+        !/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password)
+      ) {
+        nextErrors.password =
+          "Inclua uma letra maiúscula, um número e um símbolo.";
       }
     }
 
@@ -373,18 +378,33 @@ export default function App() {
             >
               Caderno de foco
             </span>
-            <h1
+            <div
               style={{
-                fontSize: "clamp(38px, 8vw, 70px)",
-                fontWeight: 600,
-                fontFamily: "var(--font-heading)",
-                margin: "0 0 16px 0",
-                lineHeight: 0.98,
-                letterSpacing: "-1px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "16px",
               }}
             >
-              Takt
-            </h1>
+              <img
+                className="login-brand-logo"
+                src="/assets/branding/takt-logo.png"
+                alt="Logo do Takt"
+                style={{ width: "72px", height: "72px", flexShrink: 0 }}
+              />
+              <h1
+                style={{
+                  fontSize: "clamp(38px, 8vw, 70px)",
+                  fontWeight: 600,
+                  fontFamily: "var(--font-heading)",
+                  margin: 0,
+                  lineHeight: 0.98,
+                  letterSpacing: "-1px",
+                }}
+              >
+                Takt
+              </h1>
+            </div>
             <p
               style={{
                 margin: "0 0 18px 0",
@@ -455,7 +475,8 @@ export default function App() {
               WebkitBackdropFilter: "var(--backdrop-blur)",
               boxShadow:
                 "0 18px 36px color-mix(in srgb, var(--color-primary) 12%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text-primary) 8%, transparent)",
-              transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
+              transition:
+                "background var(--transition-fast), box-shadow var(--transition-fast)",
             }}
           >
             <div style={{ marginBottom: "22px" }}>
@@ -604,7 +625,9 @@ export default function App() {
                 variant="primary"
                 style={{ width: "100%", marginTop: "8px" }}
               >
-                {authMode === "register" ? "Criar conta no Takt" : "Entrar no Takt"}
+                {authMode === "register"
+                  ? "Criar conta no Takt"
+                  : "Entrar no Takt"}
               </Button>
             </form>
 
@@ -645,6 +668,10 @@ export default function App() {
             .login-shell {
               grid-template-columns: 1fr !important;
               gap: 20px !important;
+            }
+            .login-brand-logo {
+              width: 56px !important;
+              height: 56px !important;
             }
             .login-static-panel {
               min-height: auto !important;
@@ -722,9 +749,13 @@ export default function App() {
                 boxShadow: "0 4px 12px var(--color-primary-glow)",
               }}
             >
-              <Clock size={20} style={{ color: "var(--bg-main)" }} />
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "row", gap: "8px" }}>
+              <img
+                src="/assets/branding/takt-logo.png"
+                alt="Takt App Logo"
+                style={{ width: "20px", height: "20px" }}
+              />
               <h1
                 style={{
                   fontSize: "18px",
