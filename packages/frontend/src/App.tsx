@@ -738,23 +738,17 @@ export default function App() {
           >
             <div
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "10px",
-                background:
-                  "linear-gradient(135deg, var(--color-primary), var(--color-secondary))",
+                minWidth: 0,
                 display: "flex",
+                flexDirection: "row",
+                gap: "8px",
                 alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 12px var(--color-primary-glow)",
               }}
             >
-            </div>
-            <div style={{ minWidth: 0, display: "flex", flexDirection: "row", gap: "8px" }}>
               <img
                 src="/assets/branding/takt-logo.png"
                 alt="Takt App Logo"
-                style={{ width: "20px", height: "20px" }}
+                style={{ width: "34px", height: "34px" }}
               />
               <h1
                 style={{
@@ -767,7 +761,7 @@ export default function App() {
                   textOverflow: "ellipsis",
                 }}
               >
-                Takt App
+                Takt
               </h1>
               <p
                 style={{
