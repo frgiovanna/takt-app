@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Card, Button, Input } from "@takt/design-system";
 import {
   LogOut,
-  Clock,
   Calendar,
   Timer,
   Sparkles,
