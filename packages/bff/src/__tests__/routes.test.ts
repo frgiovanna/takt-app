@@ -131,7 +131,7 @@ describe('BFF API Endpoints', () => {
     expect(res.body.error).toBe('Category name must be maximum 50 characters');
   });
 
-  test('POST /api/activities validates note character length', async () => {
+  test('POST /api/time-entries validates note character length', async () => {
     const activityPayload = {
       categoryId: 'cat-global-2',
       categoryName: 'Programação',
@@ -143,7 +143,7 @@ describe('BFF API Endpoints', () => {
     };
 
     const res = await request(app)
-      .post('/api/activities')
+      .post('/api/time-entries')
       .send(activityPayload);
 
     expect(res.status).toBe(400);

@@ -97,6 +97,25 @@ authRouter.post('/login', async (req, res) => {
   });
 });
 
+authRouter.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken || typeof refreshToken !== 'string') {
+    return res.status(400).json({ error: 'Refresh token is required' });
+  }
+
+  try {
+    const auth = await taktFetch<TaktAuthResponse>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    return res.json(auth);
+  } catch (error: any) {
+    return res.status(401).json({ error: error.message || 'Invalid refresh token' });
+  }
+});
+
 authRouter.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 

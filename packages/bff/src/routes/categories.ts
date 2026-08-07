@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getBearerToken, isTaktApiConfigured, taktApiFetch } from '../takt-client';
 
 export const categoriesRouter = Router();
 
@@ -7,6 +8,10 @@ export interface Category {
   name: string;
   color: string;
   isCustom: boolean;
+}
+
+function toFrontendCategory(category: Omit<Category, "isCustom"> & { userId?: string }): Category {
+  return { ...category, isCustom: Boolean(category.userId) };
 }
 
 // Initial default global categories
@@ -18,12 +23,24 @@ let categories: Category[] = [
 ];
 
 // GET all categories
-categoriesRouter.get('/', (_req, res) => {
+categoriesRouter.get('/', async (req, res) => {
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: 'Authorization token is required' });
+
+    try {
+      const result = await taktApiFetch<Array<Omit<Category, 'isCustom'> & { userId?: string }>>('/categories', token);
+      return res.json(result.map(toFrontendCategory));
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || 'Failed to load categories' });
+    }
+  }
+
   res.json(categories);
 });
 
 // POST create custom category
-categoriesRouter.post('/', (req, res) => {
+categoriesRouter.post('/', async (req, res) => {
   const { name, color } = req.body;
 
   if (!name || typeof name !== 'string') {
@@ -40,6 +57,21 @@ categoriesRouter.post('/', (req, res) => {
     return res.status(400).json({ error: 'Category name must be maximum 50 characters' });
   }
 
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: 'Authorization token is required' });
+
+    try {
+      const created = await taktApiFetch<Omit<Category, 'isCustom'> & { userId?: string }>('/categories', token, {
+          method: 'POST',
+          body: JSON.stringify({ name: trimmedName, color }),
+        });
+      return res.status(201).json(toFrontendCategory(created));
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || 'Failed to create category' });
+    }
+  }
+
   const hexColor = color && /^#[0-9A-F]{6}$/i.test(color) ? color : '#64748b'; // default slate color
 
   const newCategory: Category = {
@@ -54,8 +86,20 @@ categoriesRouter.post('/', (req, res) => {
 });
 
 // DELETE delete custom category (Physical deletion)
-categoriesRouter.delete('/:id', (req, res) => {
+categoriesRouter.delete('/:id', async (req, res) => {
   const { id } = req.params;
+
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: 'Authorization token is required' });
+
+    try {
+      await taktApiFetch<void>(`/categories/${id}`, token, { method: 'DELETE' });
+      return res.json({ message: 'Category deleted successfully', id });
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || 'Failed to delete category' });
+    }
+  }
 
   const categoryIndex = categories.findIndex((c) => c.id === id);
 

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getBearerToken, isTaktApiConfigured, taktApiFetch } from "../takt-client";
 
 export const activitiesRouter = Router();
 
@@ -43,12 +44,23 @@ let activities: Activity[] = [
 ];
 
 // GET activities
-activitiesRouter.get("/", (_req, res) => {
+activitiesRouter.get("/", async (req, res) => {
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: "Authorization token is required" });
+
+    try {
+      return res.json(await taktApiFetch<Activity[]>("/time-entries", token));
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || "Failed to load activities" });
+    }
+  }
+
   res.json(activities);
 });
 
 // POST add activity
-activitiesRouter.post("/", (req, res) => {
+activitiesRouter.post("/", async (req, res) => {
   const {
     categoryId,
     categoryName,
@@ -59,6 +71,22 @@ activitiesRouter.post("/", (req, res) => {
     note,
     title,
   } = req.body;
+
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: "Authorization token is required" });
+
+    try {
+      return res.status(200).json(
+        await taktApiFetch<Activity>("/time-entries", token, {
+          method: "POST",
+          body: JSON.stringify(req.body),
+        }),
+      );
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || "Failed to create time entry" });
+    }
+  }
 
   if (!categoryId || !categoryName || !startTime || !endTime || !title) {
     return res.status(400).json({ error: "Missing required activity fields" });
@@ -113,7 +141,7 @@ activitiesRouter.post("/", (req, res) => {
 });
 
 // PUT update activity
-activitiesRouter.put("/:id", (req, res) => {
+activitiesRouter.put("/:id", async (req, res) => {
   const { id } = req.params;
   const {
     categoryId,
@@ -127,6 +155,23 @@ activitiesRouter.put("/:id", (req, res) => {
   } = req.body;
 
   const activityIndex = activities.findIndex((a) => a.id === id);
+
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: "Authorization token is required" });
+
+    try {
+      return res.json(
+        await taktApiFetch<Activity>(`/time-entries/${id}`, token, {
+          method: "PATCH",
+          body: JSON.stringify(req.body),
+        }),
+      );
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || "Failed to update activity" });
+    }
+  }
+
   if (activityIndex === -1) {
     return res.status(404).json({ error: "Activity not found" });
   }
@@ -184,8 +229,20 @@ activitiesRouter.put("/:id", (req, res) => {
 });
 
 // DELETE activity
-activitiesRouter.delete("/:id", (req, res) => {
+activitiesRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
+
+  if (isTaktApiConfigured()) {
+    const token = getBearerToken(req.headers.authorization);
+    if (!token) return res.status(401).json({ error: "Authorization token is required" });
+
+    try {
+      await taktApiFetch<void>(`/time-entries/${id}`, token, { method: "DELETE" });
+      return res.json({ message: "Activity deleted successfully", id });
+    } catch (error: any) {
+      return res.status(502).json({ error: error.message || "Failed to delete activity" });
+    }
+  }
 
   const activityIndex = activities.findIndex((a) => a.id === id);
 

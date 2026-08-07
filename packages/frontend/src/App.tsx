@@ -20,6 +20,19 @@ import "@takt/design-system/theme.css";
 
 const DASHBOARD_SCALE = 1.1;
 const AUTH_CARD_MIN_HEIGHT = 560;
+const CATEGORY_COLORS = [
+  "#10b981",
+  "#38bdf8",
+  "#a855f7",
+  "#f59e0b",
+  "#f43f5e",
+  "#6366f1",
+  "#14b8a6",
+  "#e879f9",
+];
+
+const randomCategoryColor = () =>
+  CATEGORY_COLORS[Math.floor(Math.random() * CATEGORY_COLORS.length)];
 type AuthFieldErrors = Partial<
   Record<"username" | "email" | "password", string>
 >;
@@ -55,7 +68,7 @@ export default function App() {
 
   // Category Inputs
   const [newCatName, setNewCatName] = useState("");
-  const [newCatColor, setNewCatColor] = useState("#10b981");
+  const [newCatColor, setNewCatColor] = useState(randomCategoryColor);
   const [catError, setCatError] = useState("");
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -111,13 +124,18 @@ export default function App() {
     const loggedUser = api.getCurrentUser();
     if (loggedUser) {
       setUser(loggedUser);
-      loadDashboardData();
     }
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (date = selectedDate) => {
     try {
-      const cats = await api.getCategories();
+      const calendar = await api.getCalendar(date, date);
+      const cats = calendar.categories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        color: category.color,
+        isCustom: Boolean(category.userId),
+      }));
       setCategories(cats);
       const acts = await api.getActivities();
       setActivities(acts);
@@ -125,6 +143,10 @@ export default function App() {
       console.error("Failed to load dashboard data", err);
     }
   };
+
+  useEffect(() => {
+    if (user) void loadDashboardData(selectedDate);
+  }, [user?.id, selectedDate]);
 
   const validateAuthForm = () => {
     const cleanUsername = username.trim();
@@ -235,6 +257,7 @@ export default function App() {
       const created = await api.createCategory(newCatName.trim(), newCatColor);
       setCategories((prev) => [...prev, created]);
       setNewCatName("");
+      setNewCatColor(randomCategoryColor());
     } catch (err: any) {
       setCatError(err.message || "Erro ao criar categoria.");
     }
@@ -790,7 +813,10 @@ export default function App() {
             }}
           >
             <Button
-              onClick={() => setShowCategoriesModal(true)}
+              onClick={() => {
+                setNewCatColor(randomCategoryColor());
+                setShowCategoriesModal(true);
+              }}
               variant="secondary"
               style={{ padding: "8px 12px" }}
             >
