@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getBearerToken, isTaktApiConfigured, taktApiFetch } from '../takt-client.js';
+import { getBearerToken, isTaktApiConfigured, taktApiFetch } from '../takt-client';
 
 export const categoriesRouter = Router();
 

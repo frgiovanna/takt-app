@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { authRouter } from './routes/auth.js';
-import { categoriesRouter } from './routes/categories.js';
-import { activitiesRouter } from './routes/activities.js';
-import { calendarRouter } from './routes/calendar.js';
+import { authRouter } from './routes/auth';
+import { categoriesRouter } from './routes/categories';
+import { activitiesRouter } from './routes/activities';
+import { calendarRouter } from './routes/calendar';
 
 export function createServer() {
   const app = express();
@@ -12,6 +12,10 @@ export function createServer() {
     origin: '*', // For development, allow any origin
   }));
   app.use(express.json());
+
+  app.get('/', (_req, res) => {
+    res.json({ name: 'Takt BFF', status: 'ok' });
+  });
 
   // Health check
   app.get('/health', (_req, res) => {

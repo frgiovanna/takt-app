@@ -1,6 +1,6 @@
 import { afterEach, describe, test, expect, vi } from 'vitest';
 import request from 'supertest';
-import { createServer } from '../server.js';
+import { createServer } from '../server';
 
 const app = createServer();
 
@@ -28,6 +28,12 @@ describe('BFF API Endpoints', () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
+  });
+
+  test('GET / returns BFF status', async () => {
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Takt BFF');
   });
 
   test('POST /api/auth/login returns token and user data', async () => {
