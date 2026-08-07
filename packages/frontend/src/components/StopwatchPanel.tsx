@@ -3,7 +3,11 @@ import { Card, Button } from "@takt/design-system";
 import { Play, Square, Timer } from "lucide-react";
 import { api, Category, Activity } from "../services/api";
 import { ActivityFormModal } from "./ActivityFormModal";
-import { toLocalDateStr, formatHourString } from "../utils/dates";
+import {
+  toLocalDateStr,
+  toLocalDateTimeStr,
+  formatHourString,
+} from "../utils/dates";
 
 interface StopwatchPanelProps {
   categories: Category[];
@@ -95,8 +99,8 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({
         categoryId: selectedCategory.id,
         categoryName: selectedCategory.name,
         categoryColor: selectedCategory.color,
-        startTime: sessionStartTime.toISOString(),
-        endTime: sessionEndTime.toISOString(),
+        startTime: toLocalDateTimeStr(sessionStartTime),
+        endTime: toLocalDateTimeStr(sessionEndTime),
         productivityLevel: 3,
       });
 
@@ -299,8 +303,8 @@ export const StopwatchPanel: React.FC<StopwatchPanelProps> = ({
               categoryId: cat.id,
               categoryName: cat.name,
               categoryColor: cat.color,
-              startTime: sessionStartTime.toISOString(),
-              endTime: sessionEndTime.toISOString(),
+              startTime: toLocalDateTimeStr(sessionStartTime),
+              endTime: toLocalDateTimeStr(sessionEndTime),
               productivityLevel: values.productivityLevel,
               note: values.note.trim() || undefined,
             });

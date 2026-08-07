@@ -1,6 +1,6 @@
 import { afterEach, describe, test, expect, vi } from 'vitest';
 import request from 'supertest';
-import { createServer } from '../server';
+import { createServer } from '../server.js';
 
 const app = createServer();
 

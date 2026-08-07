@@ -221,10 +221,9 @@ export default function App() {
       loadDashboardData();
     } catch (err: any) {
       setAuthError(
-        err.message ||
-          (authMode === "register"
-            ? "Falha ao cadastrar. Verifique os dados."
-            : "Falha na autenticação. Verifique os dados."),
+        authMode === "register"
+          ? "Não foi possível criar a conta. Verifique os dados informados."
+          : "Login inválido. Verifique seu usuário e senha.",
       );
     }
   };

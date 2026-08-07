@@ -3,6 +3,11 @@ export const toLocalDateStr = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+export const toLocalDateTimeStr = (d: Date): string => {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${toLocalDateStr(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+
 export const formatHourString = (isoString: string): string => {
   const d = new Date(isoString);
   const pad = (n: number) => n.toString().padStart(2, "0");

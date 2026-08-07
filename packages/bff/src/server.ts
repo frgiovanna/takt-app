@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { authRouter } from './routes/auth';
-import { categoriesRouter } from './routes/categories';
-import { activitiesRouter } from './routes/activities';
-import { calendarRouter } from './routes/calendar';
+import { authRouter } from './routes/auth.js';
+import { categoriesRouter } from './routes/categories.js';
+import { activitiesRouter } from './routes/activities.js';
+import { calendarRouter } from './routes/calendar.js';
 
 export function createServer() {
   const app = express();

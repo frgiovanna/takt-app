@@ -1,9 +1,14 @@
 import 'dotenv/config';
-import { createServer } from './server';
+import { createServer } from './server.js';
 
-const port = process.env.PORT || 3000;
 const app = createServer();
 
-app.listen(port, () => {
-  console.log(`[Takt BFF] Server running on http://localhost:${port}`);
-});
+export default app;
+
+if (!process.env.VERCEL) {
+  const port = process.env.PORT || 3000;
+
+  app.listen(port, () => {
+    console.log(`[Takt BFF] Server running on http://localhost:${port}`);
+  });
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBearerToken, isTaktApiConfigured, taktApiFetch } from "../takt-client";
+import { getBearerToken, isTaktApiConfigured, taktApiFetch } from "../takt-client.js";
 
 export const activitiesRouter = Router();
 

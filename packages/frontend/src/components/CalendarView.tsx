@@ -130,8 +130,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       categoryId: category.id,
       categoryName: category.name,
       categoryColor: category.color,
-      startTime: new Date(`${dateStr}T${values.startTime}`).toISOString(),
-      endTime: new Date(`${dateStr}T${values.endTime}`).toISOString(),
+      startTime: `${dateStr}T${values.startTime}:00`,
+      endTime: `${dateStr}T${values.endTime}:00`,
       productivityLevel: values.productivityLevel,
       note: values.note.trim() || undefined,
     };
